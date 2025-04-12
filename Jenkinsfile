@@ -3,44 +3,48 @@ pipeline {
 
     environment {
         PYTHON_VERSION = '3.12'
-        BOT_TOKEN = credentials('API_TOKEN')  // Токен будет автоматически маскироваться
+        BOT_TOKEN = credentials('API_TOKEN')
+        PIP_CACHE_DIR = '.pip_cache'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
+                checkout([
+                    $class: 'GitSCM',
+                    extensions: [[
+                        $class: 'CloneOption',
+                        shallow: true,  // Неполный клон для ускорения
+                        depth: 1
+                    ]],
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[url: 'https://github.com/ilyaLed/tg_bot']]
+                ])
             }
         }
 
-        stage('Setup Environment') {
+        stage('Setup') {
             steps {
-                sh "python${env.PYTHON_VERSION} --version"
-                sh "python${env.PYTHON_VERSION} -m pip install --upgrade pip"
-                
-                // Безопасная проверка токена
+                sh """
+                python${env.PYTHON_VERSION} --version
+                python${env.PYTHON_VERSION} -m pip install --upgrade pip
+                python${env.PYTHON_VERSION} -m pip install --user --cache-dir ${env.PIP_CACHE_DIR} aiogram==3.0.0b7 python-dotenv loguru
+                """
+            }
+        }
+
+        stage('Verify') {
+            steps {
                 script {
-                    def botInfo = sh(
-                        script: "curl -s 'https://api.telegram.org/bot${env.BOT_TOKEN}/getMe'",
-                        returnStdout: true
+                    // Проверка, что бот действительно запускается
+                    def botStart = sh(
+                        script: "timeout 5 python${env.PYTHON_VERSION} -m bot || echo 'Bot exited'",
+                        returnStatus: true
                     )
-                    echo "Bot username: ${botInfo.tokenize('"username":"')[1].tokenize('"')[0]}"
+                    if (botStart != 143) {  // 143 = timeout
+                        error("Bot failed to run properly")
+                    }
                 }
-            }
-        }
-
-        stage('Install Dependencies') {
-            steps {
-                sh "python${env.PYTHON_VERSION} -m pip install aiogram python-dotenv loguru"
-            }
-        }
-
-        stage('Run Bot') {
-            when {
-                branch 'main'  // Исправлено с master на main (актуально для новых репозиториев)
-            }
-            steps {
-                sh "python${env.PYTHON_VERSION} -m bot"
             }
         }
     }
@@ -50,14 +54,10 @@ pipeline {
             cleanWs()
             script {
                 def duration = currentBuild.durationString.replace(' and counting', '')
-                echo "Build завершен за ${duration}"
+                echo "Build stats:"
+                echo "- Total: ${duration}"
+                echo "- Checkout: ${currentBuild.rawBuild.getAction(org.jenkinsci.plugins.workflow.job.views.FlowDurationAction.class).getStepDurations().find { it.displayName == 'Checkout' }?.durationString ?: 'N/A'}"
             }
-        }
-        success {
-            echo 'Pipeline успешно завершен!'
-        }
-        failure {
-            echo 'Pipeline завершился с ошибкой!'
         }
     }
 }
