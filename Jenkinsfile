@@ -3,51 +3,44 @@ pipeline {
 
     environment {
         PYTHON_VERSION = '3.12'
-        BOT_TOKEN = credentials('API_TOKEN')
+        BOT_TOKEN = credentials('API_TOKEN')  // Токен будет автоматически маскироваться
     }
 
     stages {
-        // Проверка токена (перенесено внутрь stages)
-        stage('Verify Token') {
-            steps {
-                script {
-                    echo "Проверка токена..."  
-                    sh """curl -s "https://api.telegram.org/bot${env.BOT_TOKEN}/getMe\""""
-                }
-            }
-        }
-
-        // Получение кода из репозитория
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
-        // Настройка Python
-        stage('Setup Python') {
+        stage('Setup Environment') {
             steps {
                 sh "python${env.PYTHON_VERSION} --version"
                 sh "python${env.PYTHON_VERSION} -m pip install --upgrade pip"
+                
+                // Безопасная проверка токена
+                script {
+                    def botInfo = sh(
+                        script: "curl -s 'https://api.telegram.org/bot${env.BOT_TOKEN}/getMe'",
+                        returnStdout: true
+                    )
+                    echo "Bot username: ${botInfo.tokenize('"username":"')[1].tokenize('"')[0]}"
+                }
             }
         }
 
-        // Проверка окружения
-        stage('Environment Check') {
+        stage('Install Dependencies') {
             steps {
-                sh """
-                    python${env.PYTHON_VERSION} -c "import os, logging, asyncio; from dotenv import load_dotenv; from aiogram import Bot, Dispatcher, types, F; print('All imports OK!')"
-                """
+                sh "python${env.PYTHON_VERSION} -m pip install aiogram python-dotenv loguru"
             }
         }
 
-        // Запуск бота
         stage('Run Bot') {
             when {
-                branch 'master' 
+                branch 'main'  // Исправлено с master на main (актуально для новых репозиториев)
             }
             steps {
-                sh "python${env.PYTHON_VERSION} -m bot" 
+                sh "python${env.PYTHON_VERSION} -m bot"
             }
         }
     }
@@ -55,6 +48,10 @@ pipeline {
     post {
         always {
             cleanWs()
+            script {
+                def duration = currentBuild.durationString.replace(' and counting', '')
+                echo "Build завершен за ${duration}"
+            }
         }
         success {
             echo 'Pipeline успешно завершен!'
