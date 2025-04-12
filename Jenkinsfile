@@ -3,24 +3,21 @@ pipeline {
 
     environment {
         PYTHON_VERSION = '3.12'
-        // Секреты 
         BOT_TOKEN = credentials('API_TOKEN')
     }
 
-    stage('Verify Token') {
-        steps {
-            script {
-                echo "Токен бота: ${env.BOT_TOKEN}"  
-                // Проверка работы с API Telegram
-                sh """
-                    curl -s "https://api.telegram.org/bot${env.BOT_TOKEN}/getMe" | jq
-                """
+    stages {
+        // Проверка токена (перенесено внутрь stages)
+        stage('Verify Token') {
+            steps {
+                script {
+                    echo "Проверка токена..."  
+                    sh """curl -s "https://api.telegram.org/bot${env.BOT_TOKEN}/getMe\""""
+                }
             }
         }
-    }
-    
-    stages {
-        //  Получение кода из репозитория
+
+        // Получение кода из репозитория
         stage('Checkout') {
             steps {
                 checkout scm
@@ -30,14 +27,17 @@ pipeline {
         // Настройка Python
         stage('Setup Python') {
             steps {
-                sh "python --version"
-                sh "python -m pip install --upgrade pip"
+                sh "python${env.PYTHON_VERSION} --version"
+                sh "python${env.PYTHON_VERSION} -m pip install --upgrade pip"
             }
         }
 
+        // Проверка окружения
         stage('Environment Check') {
             steps {
-                sh "python${PYTHON_VERSION} -c \"import os, logging, asyncio; from dotenv import load_dotenv; from aiogram import Bot, Dispatcher, types, F; print('All imports OK!')\""
+                sh """
+                    python${env.PYTHON_VERSION} -c "import os, logging, asyncio; from dotenv import load_dotenv; from aiogram import Bot, Dispatcher, types, F; print('All imports OK!')"
+                """
             }
         }
 
@@ -47,14 +47,13 @@ pipeline {
                 branch 'master' 
             }
             steps {
-                sh "python -m bot" 
+                sh "python${env.PYTHON_VERSION} -m bot" 
             }
         }
     }
 
     post {
         always {
-            // Очистка 
             cleanWs()
         }
         success {
