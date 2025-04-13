@@ -1,47 +1,50 @@
 pipeline {
-    agent {
-        docker {
-            image 'python:3.12-slim'
-            args '-v ${WORKSPACE}/.pip_cache:/root/.cache/pip'
-        }
-    }
+    agent any
 
     environment {
+        PYTHON_VERSION = '3.12'
         BOT_TOKEN = credentials('API_TOKEN')
+        PIP_CACHE_DIR = '.pip_cache'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
+                checkout([
+                    $class: 'GitSCM',
+                    extensions: [[
+                        $class: 'CloneOption',
+                        shallow: true,  // Неполный клон для ускорения
+                        depth: 1
+                    ]],
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[url: 'https://github.com/ilyaLed/tg_bot']]
+                ])
             }
         }
 
-        stage('Setup Environment') {
+        stage('Setup') {
             steps {
                 sh """
-                # Verify Python is available
-                python --version
-                
-                # Install dependencies with cache
-                pip install --upgrade pip
-                pip install --cache-dir /root/.cache/pip \
-                    aiogram==3.0.0b7 \
-                    python-dotenv \
-                    loguru
+                python${env.PYTHON_VERSION} --version
+                python${env.PYTHON_VERSION} -m pip install --upgrade pip
+                python${env.PYTHON_VERSION} -m pip install --user --cache-dir ${env.PIP_CACHE_DIR} aiogram==3.0.0b7 python-dotenv loguru
                 """
             }
         }
 
-        stage('Run Bot') {
+        stage('Verify') {
             steps {
-                sh """
-                # Verify imports work
-                python -c "from aiogram import Bot; print('Imports OK')"
-                
-                # Run with timeout (5 seconds)
-                timeout 5 python -m bot || echo 'Bot exited with code $?'
-                """
+                script {
+                    // Проверка, что бот действительно запускается
+                    def botStart = sh(
+                        script: "timeout 5 python${env.PYTHON_VERSION} -m bot || echo 'Bot exited'",
+                        returnStatus: true
+                    )
+                    if (botStart != 143) {  // 143 = timeout
+                        error("Bot failed to run properly")
+                    }
+                }
             }
         }
     }
@@ -49,9 +52,12 @@ pipeline {
     post {
         always {
             cleanWs()
-        }
-        failure {
-            echo 'Pipeline failed - check the logs above'
+            script {
+                def duration = currentBuild.durationString.replace(' and counting', '')
+                echo "Build stats:"
+                echo "- Total: ${duration}"
+                echo "- Checkout: ${currentBuild.rawBuild.getAction(org.jenkinsci.plugins.workflow.job.views.FlowDurationAction.class).getStepDurations().find { it.displayName == 'Checkout' }?.durationString ?: 'N/A'}"
+            }
         }
     }
 }
