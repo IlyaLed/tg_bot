@@ -26,7 +26,7 @@ pipeline {
             steps {
                 sh '''
                 # Активация виртуального окружения (если используется)
-                python3.12 -m myenv myenv
+                python3.12 -m venv myenv
                 source myenv/bin/activate
                 
                 # Запуск бота с логированием
