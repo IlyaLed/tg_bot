@@ -26,11 +26,11 @@ pipeline {
             steps {
                 sh '''
                 # Активация виртуального окружения (если используется)
-                python3.12 -m venv myenv
+                python3 -m venv myenv
                 source myenv/bin/activate
                 
                 # Запуск бота с логированием
-                nohup python3.12 -m bot > bot.log 2>&1 &
+                nohup python3 -m bot > bot.log 2>&1 &
                 echo "Бот запущен! Логи в bot.log"
                 '''
             }
