@@ -11,6 +11,49 @@ load_dotenv()
 
 API_TOKEN = os.getenv("API_TOKEN")
 
+LOG_DIR = "logs"
+LOG_FILE = "bot.log"
+LOG_PATH = Path(LOG_DIR) / LOG_FILE
+
+Path(LOG_DIR).mkdir(exist_ok=True)
+
+def setup_logging():
+    formatter = logging.Formatter(
+        fmt='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+
+    file_handler = logging.FileHandler(
+        filename=LOG_PATH,
+        mode='a', 
+        encoding='utf-8'
+    )
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(logging.INFO)
+
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    console_handler.setLevel(logging.DEBUG)
+
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+
+    return logger
+
+logger = setup_logging()
+
+logger.debug("Отладочное сообщение")
+logger.info("Бот запущен")
+logger.warning("Предупреждение")
+logger.error("Ошибка")
+
+if not LOG_PATH.exists():
+    logger.critical("Не удалось создать файл логов!")
+else:
+    logger.info(f"Логи записываются в: {LOG_PATH.absolute()}")
+
 logging.basicConfig(level=logging.INFO)
 
 bot = Bot(
@@ -18,19 +61,6 @@ bot = Bot(
     default=DefaultBotProperties(parse_mode=ParseMode.HTML)  
 )
 dp = Dispatcher()
-
-log_file = 'bot.log'
-
-os.makedirs(os.path.dirname(log_file), exist_ok=True)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(log_file),
-        logging.StreamHandler()
-    ]
-)
 
 logger = logging.getLogger(__name__)
 logger.info("Файл логов создан/открыт")
