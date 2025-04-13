@@ -37,8 +37,8 @@ pipeline {
                 /opt/homebrew/opt/python@3.12/bin/python3.12 -m pip install aiogram python-dotenv
                 '''
             }
-        }
-    }     
+        }   
+         
         stage('Checkout') {
             steps {
                 checkout([
