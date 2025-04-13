@@ -34,11 +34,11 @@ async def send_help(message: types.Message):
 @dp.message(F.text)
 async def echo(message: types.Message):
     await message.answer(f"Вы написали: {message.text}")
+    print("hello")
 
 async def main():
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
+    print("hello")
     asyncio.run(main())
-
-print("hello")
