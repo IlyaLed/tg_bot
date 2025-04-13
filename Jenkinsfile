@@ -1,10 +1,6 @@
 pipeline {
     agent any
     
-    options {
-        cleanWs() 
-    }
-    
     stages {
         stage('Setup Python 3.12') {
             steps {
