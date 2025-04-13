@@ -22,5 +22,18 @@ pipeline {
                 '''
             }
         }
+    stage('Run Bot') {
+            steps {
+                sh '''
+                # Активация виртуального окружения (если используется)
+                python3.12 -m myenv myenv
+                source myenv/bin/activate
+                
+                # Запуск бота с логированием
+                nohup python3.12 -m bot > bot.log 2>&1 &
+                echo "Бот запущен! Логи в bot.log"
+                '''
+            }
+        }
     }
 }
