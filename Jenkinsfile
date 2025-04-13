@@ -7,19 +7,19 @@ pipeline {
         PIP_CACHE_DIR = '.pip_cache'
     }
     
-    stage('Install Python 3.12') {
-        steps {
-            sh '''
-            # Установка через Homebrew (если есть)
-            if ! command -v brew &> /dev/null; then
-                /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-            fi
-            brew install python@3.12
-            '''
-            }
-    }
-
     stages {
+        stage('Install Python 3.12') {
+            steps {
+                sh '''
+                # Установка через Homebrew (если есть)
+                if ! command -v brew &> /dev/null; then
+                    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+                fi
+                brew install python@3.12
+                '''
+            }
+        } 
+               
         stage('Checkout') {
             steps {
                 checkout([
