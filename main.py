@@ -19,6 +19,22 @@ bot = Bot(
 )
 dp = Dispatcher()
 
+log_file = 'bot.log'
+
+os.makedirs(os.path.dirname(log_file), exist_ok=True)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_file),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
+logger.info("Файл логов создан/открыт")
+
 @dp.message(Command("start"))
 async def send_welcome(message: types.Message):
     await message.answer("Привет! Я простой бот. Напиши мне что-нибудь, и я повторю.")
